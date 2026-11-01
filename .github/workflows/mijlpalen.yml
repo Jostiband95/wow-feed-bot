@@ -1,0 +1,54 @@
+name: WoW Mijlpalen
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"   # elke 20 minuten (GitHub start soms wat later)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - mijlpalen.json
+      - mijlpalen.py
+      - .github/workflows/mijlpalen.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mijlpalen
+  cancel-in-progress: false
+
+jobs:
+  controleren:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Pakketten installeren
+        run: pip install -r requirements.txt
+
+      - name: Characters controleren en mijlpalen posten
+        env:
+          BLIZZARD_CLIENT_ID: ${{ secrets.BLIZZARD_CLIENT_ID }}
+          BLIZZARD_CLIENT_SECRET: ${{ secrets.BLIZZARD_CLIENT_SECRET }}
+          DISCORD_WEBHOOK_MIJLPALEN: ${{ secrets.DISCORD_WEBHOOK_MIJLPALEN }}
+          MILESTONES_WEBHOOK_URL: ${{ secrets.MILESTONES_WEBHOOK_URL }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: python mijlpalen.py
+
+      - name: Stand onthouden (alleen als die veranderd is)
+        run: |
+          git config user.name "wow-feed-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          [ -f mijlpalen_status.json ] || exit 0
+          git add mijlpalen_status.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Mijlpalen-stand bijgewerkt"
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 3; done
+          exit 1

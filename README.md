@@ -14,3 +14,13 @@ Houdt in Discord één statusbericht bij met welke streamers live zijn (elke ~5 
 - Streamers aanpassen: bewerk `streamers.json` (Twitch-namen zoals in twitch.tv/**naam**).
 - Geheimen: `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `DISCORD_WEBHOOK_LIVE`.
 - Statusbericht kwijt of verwijderd? Dan plaatst de bot vanzelf een nieuw.
+
+## WoW Mijlpalen
+
+Post in Discord als een van jullie characters een mijlpaal haalt: **level-ups**, **nieuwe gear** (vanaf blauw/rare) en **nieuwe mounts** (als de Blizzard API die voor Forever teruggeeft). Draait elke ~20 minuten (`.github/workflows/mijlpalen.yml`).
+- Characters aanpassen: bewerk `mijlpalen.json` — vul per persoon de volledige character-naam in (voor- en achternaam, bijv. `Spicy Vanilla`). `realm` mag leeg blijven: de bot zoekt zelf op welke ruleset (PvP EU) het character staat en hoe de API de naam schrijft, en onthoudt dat.
+- Gear-drempel: `min_kwaliteit` = `UNCOMMON`, `RARE`, `EPIC` of `LEGENDARY`.
+- Geheimen: `BLIZZARD_CLIENT_ID`, `BLIZZARD_CLIENT_SECRET` (van develop.battle.net) en `DISCORD_WEBHOOK_MIJLPALEN` (zonder die laatste post hij in het nieuwskanaal).
+- De eerste keer onthoudt de bot alleen de stand en post hij niets.
+- Blizzard werkt gegevens meestal pas bij nadat je **uitlogt**, dus een melding kan even op zich laten wachten.
+- `namespace` staat op `auto`: de bot probeert zelf de juiste WoW Forever-namespace te vinden. `mijlpalen_status.json` onthoudt de stand.
