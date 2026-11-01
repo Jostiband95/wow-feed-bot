@@ -1,0 +1,51 @@
+name: Twitch Live Status
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # elke 5 minuten (GitHub kan wat later starten)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - streamers.json
+      - twitch_status.py
+      - .github/workflows/twitch.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: twitch-status
+  cancel-in-progress: false
+
+jobs:
+  bijwerken:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Pakketten installeren
+        run: pip install -r requirements.txt
+
+      - name: Statusbericht bijwerken
+        env:
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          DISCORD_WEBHOOK_LIVE: ${{ secrets.DISCORD_WEBHOOK_LIVE }}
+        run: python twitch_status.py
+
+      - name: Bericht-ID onthouden (alleen als die veranderd is)
+        run: |
+          git config user.name "wow-feed-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add twitch_status.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Twitch-statusbericht onthouden"
+          for i in 1 2 3; do git pull --rebase -q && git push && exit 0; sleep 3; done
+          exit 1
