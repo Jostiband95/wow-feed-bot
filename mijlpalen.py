@@ -77,6 +77,7 @@ class Blizzard:
         self.taal = taal
         self.sessie = requests.Session()
         self.sessie.headers["Authorization"] = f"Bearer {token}"
+        self._realms: dict[str, list[str]] = {}
 
     def character(self, realm: str, naam: str, namespace: str, extra: str = "") -> dict:
         pad = f"/profile/wow/character/{quote(slug(realm))}/{quote(naam.strip().lower())}{extra}"
@@ -100,6 +101,40 @@ class Blizzard:
             return None
 
 
+    def realms(self, profiel_ns: str) -> list[str]:
+        """Alle realm-slugs van deze WoW-versie (voor als de realm nog niet bekend is)."""
+        if profiel_ns not in self._realms:
+            ns = profiel_ns.replace("profile-", "dynamic-", 1)
+            try:
+                r = self.sessie.get(self.basis + "/data/wow/realm/index", timeout=30,
+                                    params={"namespace": ns, "locale": self.taal})
+                self._realms[profiel_ns] = ([x["slug"] for x in r.json().get("realms", []) if x.get("slug")]
+                                            if r.status_code == 200 else [])
+            except (requests.RequestException, ValueError):
+                self._realms[profiel_ns] = []
+        return self._realms[profiel_ns]
+
+
+def vind_realm(api: Blizzard, c: dict, ns: str, state: dict) -> str | None:
+    """Zoekt op welke realm dit character staat; onthoudt het antwoord."""
+    if c["realm"]:
+        kandidaten = [c["realm"]]
+    elif state.get("realms", {}).get(c["naam"].lower()):
+        return state["realms"][c["naam"].lower()]
+    else:
+        kandidaten = api.realms(ns)
+    for realm in kandidaten:
+        try:
+            api.character(realm, c["naam"], ns)
+        except NietGevonden:
+            continue
+        if not c["realm"]:
+            state.setdefault("realms", {})[c["naam"].lower()] = realm
+            log(f"{c['naam']}: gevonden op realm '{realm}'.")
+        return realm
+    return None
+
+
 def kies_namespace(api: Blizzard, config: dict, state: dict, chars: list) -> str | None:
     regio = config.get("regio", "eu")
     if config.get("namespace", "auto") != "auto":
@@ -109,13 +144,10 @@ def kies_namespace(api: Blizzard, config: dict, state: dict, chars: list) -> str
     for kandidaat in config.get("namespace_kandidaten", []):
         ns = kandidaat.format(regio=regio)
         for c in chars:
-            try:
-                api.character(c["realm"], c["naam"], ns)
-            except NietGevonden:
-                continue
-            log(f"Namespace gevonden: {ns} (via {c['naam']})")
-            state["namespace"] = ns
-            return ns
+            if vind_realm(api, c, ns, state):
+                log(f"Namespace gevonden: {ns} (via {c['naam']})")
+                state["namespace"] = ns
+                return ns
     return None
 
 
@@ -233,11 +265,11 @@ def main() -> None:
     standaard_realm = config.get("realm", "")
     chars = []
     for c in config.get("characters", []):
-        c = dict(c, realm=(c.get("realm") or standaard_realm).strip(), naam=c.get("naam", "").strip())
-        if c["naam"] and c["realm"]:
-            chars.append(c)
-        elif c.get("speler") or c["naam"]:
-            log(f"Overgeslagen: {c.get('speler') or c['naam']} — vul 'naam' en 'realm' in mijlpalen.json in.")
+        # Geen character-naam? Dan de spelernaam zonder spaties (WoW-namen hebben geen spaties).
+        naam = (c.get("naam") or c.get("speler", "").replace(" ", "")).strip()
+        c = dict(c, realm=(c.get("realm") or standaard_realm).strip(), naam=naam)
+        if c["naam"]:
+            chars.append(c)  # lege realm = zelf zoeken op alle realms
     if not chars:
         log("Nog geen characters ingevuld in mijlpalen.json. Er gebeurt nu niets.")
         return
@@ -271,11 +303,17 @@ def main() -> None:
 
     gevonden = 0
     for c in chars:
-        sleutel = f"{slug(c['realm'])}/{c['naam'].lower()}"
+        realm = vind_realm(api, c, ns, state)
+        if not realm:
+            log(f"{c['naam']}: (nog) niet gevonden op {c['realm'] or 'een van de realms'} ({ns}).")
+            continue
+        c = dict(c, realm=realm)
+        sleutel = f"{slug(realm)}/{c['naam'].lower()}"
         try:
             nieuw, embeds = controleer(api, config, c, ns, state["characters"].get(sleutel))
         except NietGevonden:
-            log(f"{c['naam']}: niet gevonden op realm '{c['realm']}' ({ns}).")
+            log(f"{c['naam']}: niet meer gevonden op realm '{realm}' ({ns}); volgende keer opnieuw zoeken.")
+            state.get("realms", {}).pop(c["naam"].lower(), None)
             continue
         except Exception as fout:  # één character mag de rest niet stoppen
             log(f"{c['naam']}: fout → {fout}")
