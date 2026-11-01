@@ -115,23 +115,34 @@ class Blizzard:
         return self._realms[profiel_ns]
 
 
-def vind_realm(api: Blizzard, c: dict, ns: str, state: dict) -> str | None:
-    """Zoekt op welke realm dit character staat; onthoudt het antwoord."""
+def naam_varianten(naam: str) -> list[str]:
+    """WoW Forever-namen bestaan uit voor- en achternaam. Hoe de API die precies
+    verwacht is nog niet bekend, dus proberen we de logische schrijfwijzen."""
+    delen = naam.lower().split()
+    return list(dict.fromkeys([" ".join(delen), "-".join(delen), "".join(delen), delen[0]]))
+
+
+def vind_character(api: Blizzard, config: dict, c: dict, ns: str, state: dict) -> tuple[str, str] | None:
+    """Zoekt op welke realm/ruleset en onder welke schrijfwijze dit character in de API staat.
+    Geeft (realm, api_naam) terug en onthoudt het antwoord."""
+    sleutel = c["naam"].lower()
+    bekend = state.get("gevonden", {}).get(sleutel)
+    if bekend and bekend.get("namespace") == ns:
+        return bekend["realm"], bekend["api_naam"]
     if c["realm"]:
-        kandidaten = [c["realm"]]
-    elif state.get("realms", {}).get(c["naam"].lower()):
-        return state["realms"][c["naam"].lower()]
+        realms = [c["realm"]]
     else:
-        kandidaten = api.realms(ns)
-    for realm in kandidaten:
-        try:
-            api.character(realm, c["naam"], ns)
-        except NietGevonden:
-            continue
-        if not c["realm"]:
-            state.setdefault("realms", {})[c["naam"].lower()] = realm
-            log(f"{c['naam']}: gevonden op realm '{realm}'.")
-        return realm
+        extra = [r.format(regio=config.get("regio", "eu")) for r in config.get("realm_kandidaten", [])]
+        realms = list(dict.fromkeys(extra + api.realms(ns)))
+    for realm in realms:
+        for api_naam in naam_varianten(c["naam"]):
+            try:
+                api.character(realm, api_naam, ns)
+            except NietGevonden:
+                continue
+            state.setdefault("gevonden", {})[sleutel] = {"namespace": ns, "realm": realm, "api_naam": api_naam}
+            log(f"{c['naam']}: gevonden als '{api_naam}' op '{realm}'.")
+            return realm, api_naam
     return None
 
 
@@ -144,7 +155,7 @@ def kies_namespace(api: Blizzard, config: dict, state: dict, chars: list) -> str
     for kandidaat in config.get("namespace_kandidaten", []):
         ns = kandidaat.format(regio=regio)
         for c in chars:
-            if vind_realm(api, c, ns, state):
+            if vind_character(api, config, c, ns, state):
                 log(f"Namespace gevonden: {ns} (via {c['naam']})")
                 state["namespace"] = ns
                 return ns
@@ -159,7 +170,7 @@ def gear_link(config: dict, item_id: int) -> str:
 
 
 def controleer(api: Blizzard, config: dict, c: dict, ns: str, oud: dict | None) -> tuple[dict, list]:
-    realm, naam = c["realm"], c["naam"]
+    realm, naam = c["realm"], c["api_naam"]
     profiel = api.character(realm, naam, ns)
     uitrusting = api.optioneel(realm, naam, ns, "/equipment") or {}
     mounts_data = api.optioneel(realm, naam, ns, "/collections/mounts")
@@ -176,12 +187,13 @@ def controleer(api: Blizzard, config: dict, c: dict, ns: str, oud: dict | None) 
         "mounts_bekend": mounts_data is not None,
     }
     if oud is None:
-        log(f"{naam}: voor het eerst gevonden (level {nieuw['level']}, {len(items)} items, "
+        log(f"{c['naam']}: voor het eerst gevonden (level {nieuw['level']}, {len(items)} items, "
             f"{len(mounts) if mounts_data is not None else 'geen'} mounts) — stand onthouden, niets gepost.")
         return nieuw, []
 
     kop = {
-        "name": f"{profiel.get('name', naam)}" + (f" ({c['speler']})" if c.get("speler") else ""),
+        "name": c["naam"] + (f" ({c['speler']})" if c.get("speler")
+                             and c["speler"].replace(" ", "").lower() != c["naam"].replace(" ", "").lower() else ""),
     }
     avatar = next((a["value"] for a in media.get("assets", []) if a.get("key") == "avatar"), None)
     if avatar:
@@ -196,7 +208,7 @@ def controleer(api: Blizzard, config: dict, c: dict, ns: str, oud: dict | None) 
         speciaal = [lv for lv in config.get("speciale_levels", []) if was < lv <= is_nu]
         max_lv = max(config.get("speciale_levels", [60]) or [60])
         if is_nu >= max_lv and was < max_lv:
-            titel, kleur = f"🏆 MAX LEVEL! {profiel.get('name', naam)} is level {is_nu}!", GOUD
+            titel, kleur = f"🏆 MAX LEVEL! {c['naam']} is level {is_nu}!", GOUD
         elif speciaal:
             titel, kleur = f"🎉 Level {is_nu} bereikt!", GOUD
         else:
@@ -265,8 +277,8 @@ def main() -> None:
     standaard_realm = config.get("realm", "")
     chars = []
     for c in config.get("characters", []):
-        # Geen character-naam? Dan de spelernaam zonder spaties (WoW-namen hebben geen spaties).
-        naam = (c.get("naam") or c.get("speler", "").replace(" ", "")).strip()
+        # WoW Forever: voor- en achternaam, bijv. "Spicy Vanilla". Geen naam? Dan de spelernaam.
+        naam = " ".join((c.get("naam") or c.get("speler", "")).split())
         c = dict(c, realm=(c.get("realm") or standaard_realm).strip(), naam=naam)
         if c["naam"]:
             chars.append(c)  # lege realm = zelf zoeken op alle realms
@@ -303,17 +315,18 @@ def main() -> None:
 
     gevonden = 0
     for c in chars:
-        realm = vind_realm(api, c, ns, state)
-        if not realm:
-            log(f"{c['naam']}: (nog) niet gevonden op {c['realm'] or 'een van de realms'} ({ns}).")
+        gevonden_als = vind_character(api, config, c, ns, state)
+        if not gevonden_als:
+            log(f"{c['naam']}: (nog) niet gevonden op {c['realm'] or 'een van de realms/rulesets'} ({ns}).")
             continue
-        c = dict(c, realm=realm)
-        sleutel = f"{slug(realm)}/{c['naam'].lower()}"
+        realm, api_naam = gevonden_als
+        c = dict(c, realm=realm, api_naam=api_naam)
+        sleutel = f"{slug(realm)}/{api_naam}"
         try:
             nieuw, embeds = controleer(api, config, c, ns, state["characters"].get(sleutel))
         except NietGevonden:
             log(f"{c['naam']}: niet meer gevonden op realm '{realm}' ({ns}); volgende keer opnieuw zoeken.")
-            state.get("realms", {}).pop(c["naam"].lower(), None)
+            state.get("gevonden", {}).pop(c["naam"].lower(), None)
             continue
         except Exception as fout:  # één character mag de rest niet stoppen
             log(f"{c['naam']}: fout → {fout}")

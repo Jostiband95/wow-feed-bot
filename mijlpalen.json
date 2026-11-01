@@ -2,6 +2,11 @@
   "afzender": "WoW Mijlpalen",
   "regio": "eu",
   "realm": "",
+  "realm_kandidaten": [
+    "pvp",
+    "pvp-{regio}",
+    "{regio}-pvp"
+  ],
   "namespace": "auto",
   "namespace_kandidaten": [
     "profile-classicforever-{regio}",
@@ -22,13 +27,13 @@
   ],
   "characters": [
     {
-      "speler": "Spicy Vanilla",
-      "naam": "Spicyvanilla",
+      "speler": "",
+      "naam": "Spicy Vanilla",
       "realm": ""
     },
     {
-      "speler": "Xeal Tv",
-      "naam": "Xealtv",
+      "speler": "",
+      "naam": "Xeal Tv",
       "realm": ""
     },
     {
