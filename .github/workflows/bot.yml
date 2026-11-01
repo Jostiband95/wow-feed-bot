@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "*/10 * * * *"   # elke 10 minuten (GitHub kan wat later starten)
   workflow_dispatch:          # handmatig starten via de knop "Run workflow"
+  push:                       # ook meteen draaien als de instellingen of code veranderen
+    branches: [main]
+    paths:
+      - config.json
+      - wow_feed_bot.py
+      - .github/workflows/bot.yml
 
 permissions:
   contents: write
