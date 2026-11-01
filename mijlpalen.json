@@ -1,0 +1,22 @@
+{
+  "afzender": "WoW Mijlpalen",
+  "regio": "eu",
+  "realm": "",
+  "namespace": "auto",
+  "namespace_kandidaten": [
+    "profile-classicforever-{regio}",
+    "profile-forever-{regio}",
+    "profile-classic-{regio}",
+    "profile-classic1x-{regio}"
+  ],
+  "taal": "en_GB",
+  "wowhead_pad": "forever",
+  "min_kwaliteit": "RARE",
+  "speciale_levels": [10, 20, 30, 40, 50, 60],
+  "characters": [
+    { "speler": "Spicy Vanilla", "naam": "", "realm": "" },
+    { "speler": "Xeal Tv", "naam": "", "realm": "" },
+    { "speler": "", "naam": "", "realm": "" },
+    { "speler": "", "naam": "", "realm": "" }
+  ]
+}
