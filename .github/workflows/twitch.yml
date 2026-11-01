@@ -2,7 +2,7 @@ name: Twitch Live Status
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # elke 5 minuten (GitHub kan wat later starten)
+    - cron: "*/5 * * * *"   # elke 5 minuten (GitHub start soms wat later)
   workflow_dispatch:
   push:
     branches: [main]
