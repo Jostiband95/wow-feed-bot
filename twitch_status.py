@@ -115,11 +115,11 @@ def maak_bericht(config: dict, namen: list[str], gebruikers: dict, streams: dict
         )
 
     nu = int(time.time())
-    beschrijving = "\n".join(regels) if regels else "*Er is nu niemand live.*"
+    beschrijving = "\n\n".join(regels) if regels else "*Er is nu niemand live.*"
     # Discord: max 4096 tekens in de beschrijving
     while len(beschrijving) > 4000 and regels:
         regels.pop()
-        beschrijving = "\n".join(regels) + "\n*…en meer*"
+        beschrijving = "\n\n".join(regels) + "\n\n*…en meer*"
 
     embeds = [{
         "title": f"🔴 Live nu ({len(live)}/{len(namen)})",
