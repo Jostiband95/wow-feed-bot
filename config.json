@@ -21,6 +21,22 @@
       "afzender": "World of Warcraft YouTube",
       "bericht": "📺 Nieuwe video van World of Warcraft: **{titel}**\n{link}",
       "bij_start_laatste_posten": true
+    },
+    {
+      "naam": "Wowhead Blue Tracker – Forever (EU)",
+      "type": "nieuws",
+      "aan": true,
+      "feed": "https://www.wowhead.com/blue-tracker?rss",
+      "webhook": "${DISCORD_WEBHOOK}",
+      "afzender": "Blizzard Blue Posts",
+      "kleur": "#00AEFF",
+      "filter": [
+        "WoW: Forever",
+        "WoW Forever",
+        "Warcraft: Forever"
+      ],
+      "link_bevat": "/eu/",
+      "bij_start_laatste_posten": true
     }
   ]
 }

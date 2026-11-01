@@ -153,7 +153,13 @@ def check_bron(bron: dict, state: dict) -> None:
     gezien = state.setdefault(sleutel, [])
 
     entries = haal_feed(bron["feed"])
-    nieuw = [e for e in entries if entry_id(e) not in gezien and past_filter(e, bron.get("filter"))]
+    link_bevat = bron.get("link_bevat")  # bijv. "/eu/" om alleen EU-posts te nemen
+    nieuw = [
+        e for e in entries
+        if entry_id(e) not in gezien
+        and past_filter(e, bron.get("filter"))
+        and (not link_bevat or link_bevat in (e.get("link") or ""))
+    ]
 
     if eerste_keer:
         # Eerste run: alles als 'gezien' markeren zodat het kanaal niet volgespamd wordt.
