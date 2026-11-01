@@ -1,0 +1,27 @@
+name: Weekly Reset
+
+on:
+  schedule:
+    - cron: "7 4 * * 3"   # woensdag 04:07 UTC (= 05:07 in de winter, 06:07 in de zomer), net na de EU-reset
+  workflow_dispatch:        # handmatig testen via "Run workflow"
+
+jobs:
+  posten:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Pakketten installeren
+        run: pip install -r requirements.txt
+
+      - name: Reset-herinnering posten
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK_RESET: ${{ secrets.DISCORD_WEBHOOK_RESET }}
+        run: python weekly_reset.py

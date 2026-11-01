@@ -24,3 +24,9 @@ Post in Discord als een van jullie characters een mijlpaal haalt: **level-ups**,
 - De eerste keer onthoudt de bot alleen de stand en post hij niets.
 - Blizzard werkt gegevens meestal pas bij nadat je **uitlogt**, dus een melding kan even op zich laten wachten.
 - `namespace` staat op `auto`: de bot probeert zelf de juiste WoW Forever-namespace te vinden. `mijlpalen_status.json` onthoudt de stand.
+
+## Weekly reset-herinnering
+
+Post elke woensdagochtend (net na de EU-reset, 04:00 UTC) in het nieuwskanaal dat de raid-lockouts en weeklies van WoW Forever gereset zijn (`weekly_reset.py`, `.github/workflows/weekly-reset.yml`).
+- Gebruikt de geheime `DISCORD_WEBHOOK`. Wil je hem in een ander kanaal? Voeg `DISCORD_WEBHOOK_RESET` toe.
+- Testen: Actions → *Weekly Reset* → *Run workflow*.
