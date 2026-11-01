@@ -1,0 +1,26 @@
+{
+  "interval_minuten": 10,
+  "bronnen": [
+    {
+      "naam": "Wowhead – WoW Forever",
+      "type": "nieuws",
+      "aan": true,
+      "feed": "https://www.wowhead.com/news/rss/forever",
+      "webhook": "${DISCORD_WEBHOOK}",
+      "afzender": "Wowhead Forever",
+      "kleur": "#B4004E",
+      "filter": [],
+      "bij_start_laatste_posten": true
+    },
+    {
+      "naam": "YouTube – World of Warcraft",
+      "type": "youtube",
+      "aan": true,
+      "feed": "https://www.youtube.com/feeds/videos.xml?channel_id=UCbLj9QP9FAaHs_647QckGtg",
+      "webhook": "${DISCORD_WEBHOOK}",
+      "afzender": "World of Warcraft YouTube",
+      "bericht": "📺 Nieuwe video van World of Warcraft: **{titel}**\n{link}",
+      "bij_start_laatste_posten": true
+    }
+  ]
+}
